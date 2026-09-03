@@ -13,5 +13,11 @@ data class Content(
 )
 @Serializable
 data class Part(
-    val text: String
+    val text: String? = null,
+    val inlineData: InlineData? = null
+)
+@Serializable
+data class InlineData(
+    val mimeType: String,
+    val data: String
 )

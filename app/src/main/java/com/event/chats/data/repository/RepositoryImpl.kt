@@ -1,5 +1,7 @@
 package com.event.chats.data.repository
 
+import android.util.Base64
+import android.util.Log
 import com.event.chats.BuildConfig
 import com.event.chats.data.local.ChatDao
 import com.event.chats.data.local.Conversation
@@ -8,13 +10,15 @@ import com.event.chats.data.network.ApiService
 import com.event.chats.data.network.model.Content
 import com.event.chats.data.network.model.GeminiRequest
 import com.event.chats.data.network.model.GeminiResponse
+import com.event.chats.data.network.model.InlineData
 import com.event.chats.data.network.model.Part
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import java.io.File
 import javax.inject.Inject
 
 class RepositoryImpl @Inject constructor(
@@ -46,8 +50,10 @@ class RepositoryImpl @Inject constructor(
         dao.deleteConversation(convId)
     }
 
-    override fun responseStream(conversationId: String): Flow<String> = flow {
-        val context = dao.getContext(conversationId).map { it.toContent() }.reversed()
+    override fun responseStream(convId: String): Flow<String> = flow {
+        val context = dao.getContext(convId).mapIndexed { index, msg ->
+            msg.toContent(includedImage = index == 0) }.reversed()
+
         val response = api.streamGenerateContent(BuildConfig.API_KEY, request= GeminiRequest(context))
         if (!response.isSuccessful) throw Exception("Request Failed: ${response.code()}")
         val body = response.body() ?: throw Exception("Empty body")
@@ -66,10 +72,29 @@ class RepositoryImpl @Inject constructor(
             }
         }
     }.flowOn(Dispatchers.IO)
-    fun Message.toContent(): Content {
+
+     suspend fun Message.toContent(includedImage: Boolean): Content {
+        val imagePart = if (includedImage && imagePath != null) {
+            withContext(Dispatchers.IO){
+                imagePath.pathToBase64()?.let {
+                    Part(inlineData = InlineData(mimeType = "image/jpeg", it))
+                }
+            }
+        } else null
+
         return Content(
             role = if (user) "user" else "model",
-            parts = listOf(Part(content))
+            parts = listOfNotNull(Part(content), imagePart)
         )
+    }
+
+    fun String.pathToBase64(): String? {
+       return  try {
+            val bytes = File(this).readBytes()
+            Base64.encodeToString(bytes, Base64.NO_WRAP)
+        }catch (e: Exception){
+            Log.e("ImageEncode", "Failed to encode from path", e)
+            null
+        }
     }
 }

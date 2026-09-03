@@ -1,5 +1,10 @@
 package com.event.chats.ui
 
+import android.content.ClipData
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -18,6 +23,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Photo
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -27,6 +34,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
@@ -34,10 +42,16 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -62,13 +76,15 @@ fun MainScreen(viewmodel: ChatViewmodel = hiltViewModel()){
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
+    var selectedImage by remember { mutableStateOf<Uri?>(null) }
+
     ClearFocus()
 
-    LaunchedEffect(responseStream) {
-        if (responseStream != null){
-            listState.animateScrollToItem(0)
-        }
-    }
+   LaunchedEffect(responseStream) {
+       if (responseStream != null){
+           listState.animateScrollToItem(0)
+       }
+   }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -103,9 +119,19 @@ fun MainScreen(viewmodel: ChatViewmodel = hiltViewModel()){
                 )
             }
         ) { paddingValues ->
+
+            val pickPhoto = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.PickVisualMedia(),
+                onResult = {uri: Uri? ->
+                    uri?.let { selectedImage = uri }
+                }
+            )
+            val clipboard = LocalClipboard.current
+            val scope = rememberCoroutineScope()
             Column(
                 modifier = Modifier.fillMaxSize().padding(paddingValues).imePadding()
             ) {
+                val context = LocalContext.current
 
                 LazyColumn(
                     modifier = Modifier.weight(1f),
@@ -119,17 +145,43 @@ fun MainScreen(viewmodel: ChatViewmodel = hiltViewModel()){
                         }
                     }
                     items(items = messages, key = { it.id }) {
-                        MessageBubble(content = it.content, user = it.user)
+                        Column(horizontalAlignment = if (it.user) Alignment.End else Alignment.Start) {
+                            val failedUsermsg = it.id == messages.firstOrNull { m -> m.user }?.id
+                            MessageBubble(
+                                content = it.content,
+                                user = it.user,
+                                imagePath = it.imagePath,
+                                onCopy = {
+                                    scope.launch {
+                                        clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("copy",it.content)))
+                                    }
+                                }
+                            )
+                            if (failedUsermsg && sendState is SendState.Error) {
+                                IconButton({ viewmodel.retry() }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Refresh,
+                                        contentDescription = "retry"
+                                    )
+                                }
+                            }
+                        }
                     }
 
                 }
 
                 if (sendState is SendState.Error){
-                    Text(
-                        text = (sendState as SendState.Error).message,
-                        color = MaterialTheme.colorScheme.error,
-                        fontSize = 14.sp
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = (sendState as SendState.Error).message,
+                            color = MaterialTheme.colorScheme.error,
+                            fontSize = 14.sp,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TextButton(onClick = {viewmodel.retry()}) {
+                            Text("Retry")
+                        }
+                    }
                 }
 
                 Row(
@@ -137,6 +189,15 @@ fun MainScreen(viewmodel: ChatViewmodel = hiltViewModel()){
                         .background(color = MaterialTheme.colorScheme.background),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    IconButton(
+                        onClick = {
+                            pickPhoto.launch(
+                                PickVisualMediaRequest(
+                                    ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        }
+                    ) {Icon(Icons.Default.Photo, "photo") }
+                    Spacer(modifier = Modifier.width(5.dp))
                     TextField(
                         value = userMsg,
                         onValueChange = {viewmodel.updateUserMsg(it)},
@@ -157,8 +218,11 @@ fun MainScreen(viewmodel: ChatViewmodel = hiltViewModel()){
                     }
                     else{
                         IconButton(
-                            onClick = {viewmodel.response(userMsg)},
-                            enabled = userMsg.isNotBlank()
+                            onClick = {
+                                viewmodel.response(context, userMsg, selectedImage)
+                                selectedImage = null
+                            },
+                            enabled = userMsg.isNotBlank() || selectedImage != null
                         ) {
                             Icon(
                                 Icons.AutoMirrored.Filled.Send,

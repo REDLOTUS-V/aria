@@ -1,5 +1,7 @@
 package com.event.chats.ui
 
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.event.chats.data.local.Conversation
@@ -17,6 +19,8 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.io.File
+import java.util.UUID
 import javax.inject.Inject
 import kotlin.let
 import kotlin.text.take
@@ -32,7 +36,6 @@ class ChatViewmodel @Inject constructor(private val repository: Repository): Vie
     val activeConvId: StateFlow<String> = _activeConvId.asStateFlow()
     private val _responseStream = MutableStateFlow<String?>(null)
     val responseStream: StateFlow<String?> = _responseStream
-
     val chatDrawerItem: StateFlow<List<ConversationItem>> = repository.getConversations()
         .map { conversations ->
             conversations.map {
@@ -46,7 +49,6 @@ class ChatViewmodel @Inject constructor(private val repository: Repository): Vie
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
-
     val messages: StateFlow<List<Message>> = _activeConvId
         .flatMapLatest { repository.getAllMessages(it)}
         .stateIn(
@@ -54,7 +56,7 @@ class ChatViewmodel @Inject constructor(private val repository: Repository): Vie
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
-
+    private var failedConvId: String? = null
     private val _userMsg = MutableStateFlow("")
     val userMsg: StateFlow<String> = _userMsg.asStateFlow()
 
@@ -67,60 +69,78 @@ class ChatViewmodel @Inject constructor(private val repository: Repository): Vie
     fun selectConversation(convId: String){
         _activeConvId.value = convId
     }
-
-    fun response(userMsg: String){
+    fun response(context: Context, msg: String, uri: Uri? = null){
         viewModelScope.launch {
+            val imagePath = uri?.saveImageToInternal(context)
             val currentConvId = _activeConvId.value
-            saveConversation(userMsg)
-
-            _sendState.value = SendState.Sending
-            val user = Message(
-                content = userMsg,
-                conversationId = currentConvId,
-                user = true
-            )
+            saveConversation(currentConvId,msg)
+            val user = Message(content = msg, conversationId = currentConvId, user = true, imagePath = imagePath)
             repository.saveMessage(user)
             _userMsg.value = ""
-
-            _responseStream.value = ""
-            val accumulator = StringBuilder()
-            repository.responseStream(currentConvId)
-                .catch {e ->
-                    _responseStream.value = null
-                    _sendState.value = SendState.Error(e.message ?: "unknown error")
-                }
-                .collect {
-                    accumulator.append(it)
-                    _responseStream.value = accumulator.toString()
-                }
-            val savedMsg = Message(
-                content = accumulator.toString(),
-                conversationId = currentConvId,
-                user = false
-            )
-            repository.saveMessage(savedMsg)
-
-            //suspend coroutine until saved mesage emitted by messages
-            messages.first {messages -> messages.any { it.content == savedMsg.content && !it.user } }
-            _responseStream.value = null
-            _sendState.value = SendState.Idle
+            stream(currentConvId)
         }
     }
-    suspend fun saveConversation(text: String){
-        val currentConvId = _activeConvId.value
-        val existingConvId = repository.getConvById(currentConvId)
+
+    fun retry(){
+        val convId = failedConvId ?: return
+        viewModelScope.launch {
+            stream(convId)
+        }
+    }
+    private suspend fun stream(convId: String){
+        _sendState.value = SendState.Sending
+        _responseStream.value = ""
+
+        val accumulated = StringBuilder()
+        var isFailed = false
+        repository.responseStream(convId).catch {e ->
+            _responseStream.value = null
+            _sendState.value = SendState.Error(e.message ?: "unknown error")
+            failedConvId = convId
+            isFailed = true
+        }.collect {
+            accumulated.append(it)
+            _responseStream.value = accumulated.toString()
+        }
+        if (isFailed) return
+        val model = Message(content = accumulated.toString(), conversationId = convId, user = false)
+        repository.saveMessage(model)
+
+        messages.first { messages-> messages.any { it.content == model.content } }
+        _responseStream.value = null
+        _sendState.value = SendState.Idle
+        failedConvId = null
+    }
+
+    suspend fun saveConversation(convId: String,text: String){
+        val existingConvId = repository.getConvById(convId)
         if (existingConvId == null) {
             val newConversation = Conversation(
-                id = currentConvId,
+                id = convId,
                 title = text.take(40).let { if (text.length > 40) "$it..." else it }
             )
             repository.saveConversation(newConversation)
         }
     }
-    suspend fun saveMessage(message: Message){
-
-    }
     fun deleteConversation(convId: String){
         viewModelScope.launch { repository.deleteConversation(convId) }
+    }
+}
+fun Uri.saveImageToInternal(context: Context): String? {
+    return try {
+        val imageDir = File(context.filesDir, "images").apply { mkdirs() }
+        val fileName = "chat_img_${UUID.randomUUID()}.jpg"
+        val localFile = File(imageDir, fileName)
+
+        context.contentResolver.openInputStream(this)?.use {inputStream ->
+            localFile.outputStream().use {
+                inputStream.copyTo(it)
+            }
+        }
+        localFile.absolutePath
+
+    }catch (e: Exception) {
+        android.util.Log.e("ImageSave Failed:", e.message ?: "dont know whats wrong")
+        null
     }
 }

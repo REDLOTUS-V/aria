@@ -22,5 +22,6 @@ data class Message(
     val content: String,
     val user: Boolean,
     val timestamp: Long = System.currentTimeMillis(),
-    val conversationId: String
+    val conversationId: String,
+    val imagePath: String? = null
 )

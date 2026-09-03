@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.event.chats.data.local.ChatDao
 import com.event.chats.data.local.ChatDatabase
+import com.event.chats.data.local.migration_3_4
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -21,7 +22,7 @@ object DataModule {
             context,
             ChatDatabase::class.java,
             "Chat_Databse"
-        ).fallbackToDestructiveMigration(true).build()
+        ).addMigrations(migration_3_4).build()
     }
 
     @Provides

@@ -11,5 +11,5 @@ interface Repository {
     fun getConversations(): Flow<List<Conversation>>
     suspend fun saveConversation(conversation: Conversation)
     suspend fun deleteConversation(convId: String)
-    fun responseStream(conversationId: String): Flow<String>
+    fun responseStream(convId: String): Flow<String>
 }
