@@ -12,6 +12,7 @@ import com.event.chats.data.network.model.GeminiRequest
 import com.event.chats.data.network.model.GeminiResponse
 import com.event.chats.data.network.model.InlineData
 import com.event.chats.data.network.model.Part
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -32,6 +33,10 @@ class RepositoryImpl @Inject constructor(
 
     override suspend fun saveMessage(message: Message) {
         dao.saveMessage(message)
+    }
+
+    override suspend fun deleteMsg(id: Int) {
+        dao.deleteMsg(id)
     }
 
     override suspend fun getConvById(convId: String): Conversation? {
@@ -73,7 +78,7 @@ class RepositoryImpl @Inject constructor(
         }
     }.flowOn(Dispatchers.IO)
 
-     suspend fun Message.toContent(includedImage: Boolean): Content {
+      suspend fun Message.toContent(includedImage: Boolean): Content {
         val imagePart = if (includedImage && imagePath != null) {
             withContext(Dispatchers.IO){
                 imagePath.pathToBase64()?.let {

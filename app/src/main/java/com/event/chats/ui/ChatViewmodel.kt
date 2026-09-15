@@ -9,6 +9,7 @@ import com.event.chats.data.local.Message
 import com.event.chats.data.repository.Repository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -22,14 +23,12 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.util.UUID
 import javax.inject.Inject
-import kotlin.let
 import kotlin.text.take
 import kotlin.uuid.Uuid
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class ChatViewmodel @Inject constructor(private val repository: Repository): ViewModel() {
-
     private val _sendState = MutableStateFlow<SendState>(SendState.Idle)
     val sendState: StateFlow<SendState> = _sendState.asStateFlow()
     private val _activeConvId= MutableStateFlow(Uuid.random().toString())
@@ -87,18 +86,18 @@ class ChatViewmodel @Inject constructor(private val repository: Repository): Vie
             stream(convId)
         }
     }
-    private suspend fun stream(convId: String){
+   private suspend fun stream(convId: String){
         _sendState.value = SendState.Sending
-        _responseStream.value = ""
-
         val accumulated = StringBuilder()
         var isFailed = false
+
         repository.responseStream(convId).catch {e ->
             _responseStream.value = null
             _sendState.value = SendState.Error(e.message ?: "unknown error")
             failedConvId = convId
             isFailed = true
         }.collect {
+            _responseStream.value = ""
             accumulated.append(it)
             _responseStream.value = accumulated.toString()
         }
@@ -106,21 +105,23 @@ class ChatViewmodel @Inject constructor(private val repository: Repository): Vie
         val model = Message(content = accumulated.toString(), conversationId = convId, user = false)
         repository.saveMessage(model)
 
-        messages.first { messages-> messages.any { it.content == model.content } }
+        messages.first { messages -> messages.any { it.content == model.content } }
         _responseStream.value = null
         _sendState.value = SendState.Idle
         failedConvId = null
     }
-
-    suspend fun saveConversation(convId: String,text: String){
+    private suspend fun saveConversation(convId: String, msg: String){
         val existingConvId = repository.getConvById(convId)
-        if (existingConvId == null) {
-            val newConversation = Conversation(
+        if (existingConvId == null){
+            val newConv = Conversation(
                 id = convId,
-                title = text.take(40).let { if (text.length > 40) "$it..." else it }
+                title = if (msg.length > 40)  "${msg.take(40)}..."  else msg
             )
-            repository.saveConversation(newConversation)
+            repository.saveConversation(newConv)
         }
+    }
+    fun deleteMsg(id: Int){
+        viewModelScope.launch { repository.deleteMsg(id) }
     }
     fun deleteConversation(convId: String){
         viewModelScope.launch { repository.deleteConversation(convId) }

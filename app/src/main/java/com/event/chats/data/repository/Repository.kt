@@ -7,9 +7,11 @@ import kotlinx.coroutines.flow.Flow
 interface Repository {
     fun getAllMessages(conversationId: String): Flow<List<Message>>
     suspend fun saveMessage(message: Message)
+    suspend fun deleteMsg(id: Int)
     suspend fun getConvById(convId: String): Conversation?
     fun getConversations(): Flow<List<Conversation>>
     suspend fun saveConversation(conversation: Conversation)
     suspend fun deleteConversation(convId: String)
     fun responseStream(convId: String): Flow<String>
+
 }

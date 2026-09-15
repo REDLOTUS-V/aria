@@ -7,6 +7,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.platform.LocalFocusManager
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Instant
+
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -17,4 +21,17 @@ fun ClearFocus(focusManager: FocusManager = LocalFocusManager.current) {
             focusManager.clearFocus()
         }
     }
+}
+
+fun Long.formatTimestamp(): String {
+    val localTime = Instant.fromEpochMilliseconds(this).toLocalDateTime(TimeZone.currentSystemDefault())
+    val hour = localTime.hour
+    val amPm = if (hour < 12) "am" else "pm"
+
+    val display = when{
+        hour == 0 -> 12
+        hour > 12 -> hour - 12
+        else -> hour
+    }
+    return "$display:${localTime.minute} $amPm"
 }

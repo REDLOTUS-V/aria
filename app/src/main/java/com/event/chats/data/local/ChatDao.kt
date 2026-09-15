@@ -2,6 +2,7 @@ package com.event.chats.data.local
 
 import androidx.room.Dao
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
 
@@ -12,8 +13,11 @@ interface ChatDao {
 
     @Query("SELECT * FROM Message WHERE conversationId=:convId ORDER BY timestamp DESC LIMIT :limit")
     suspend fun getContext(convId: String,limit: Int = 15): List<Message>
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun saveMessage(message: Message)
+
+    @Query("DELETE FROM Message WHERE id=:id")
+    suspend fun deleteMsg(id: Int)
 
     @Query("SELECT * FROM conversations WHERE id= :convId")
     suspend fun getConvById(convId: String): Conversation?

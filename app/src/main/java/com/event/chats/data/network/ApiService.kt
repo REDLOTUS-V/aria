@@ -11,11 +11,12 @@ import retrofit2.http.Query
 import retrofit2.http.Streaming
 
 interface ApiService {
-   @POST("v1beta/models/gemini-3.5-flash-lite:generateContent")
-   suspend fun generateContent(
-       @Header("x-goog-api-key")apiKey: String,
-       @Body request: GeminiRequest
-   ): GeminiResponse
+
+  @POST("v1beta/models/gemini-3.5-flash:generateContent")
+  suspend fun generateContent(
+      @Header("x-goog-api-key") apiKey: String,
+      @Body request: GeminiRequest
+  ): GeminiResponse
 
   @Streaming
   @POST("v1beta/models/gemini-3.5-flash-lite:streamGenerateContent")

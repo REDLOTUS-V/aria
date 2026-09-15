@@ -4,6 +4,9 @@ coreKtx = "1.19.0"
 junit = "4.13.2"
 junitVersion = "1.1.5"
 espressoCore = "3.5.1"
+kotlinxDateTime = "0.8.0"
+kotlinxCoroutinesTest = "1.11.0"
+mockk = "1.14.11"
 lifecycleRuntimeKtx = "2.6.1"
 activityCompose = "1.8.0"
 kotlin = "2.4.10"
@@ -17,10 +20,14 @@ kotlinSerialization = "1.11.0"
 retrofit = "3.0.0"
 secrets = "2.0.1"
 coill = "3.6.0"
+junitJupiter = "5.11.0"
+junitPlatformLauncher = "1.11.0"
+junitVintageEngine = "5.11.0"
+turbine = "1.2.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
-junit = { group = "junit", name = "junit", version.ref = "junit" }
+junit4 = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
@@ -41,12 +48,19 @@ hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.r
 hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
 
 
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDateTime" }
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinxCoroutinesTest" }
+mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 kotlinx-serialization = {group= "org.jetbrains.kotlinx", name= "kotlinx-serialization-json", version.ref= "kotlinSerialization"}
 retrofit = {group="com.squareup.retrofit2", name="retrofit", version.ref="retrofit"}
 retrofit-kotlinx-serialization-converter = {group="com.squareup.retrofit2",name="converter-kotlinx-serialization", version.ref="retrofit"}
+junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter", version.ref = "junitJupiter" }
+junit-platform-launcher = { group = "org.junit.platform", name = "junit-platform-launcher", version.ref = "junitPlatformLauncher" }
+junit-vintage-engine = { group = "org.junit.vintage", name = "junit-vintage-engine", version.ref = "junitVintageEngine" }
+turbine ={group= "app.cash.turbine", name="turbine", version.ref="turbine"}
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
