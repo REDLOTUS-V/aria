@@ -24,4 +24,7 @@ dependencyResolutionManagement {
 
 rootProject.name = "aichat"
 include(":app")
- 
+include(":core:database")
+include(":core:network")
+include(":feature:chat")
+include(":core:data")

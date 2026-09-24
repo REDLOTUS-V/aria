@@ -20,6 +20,8 @@ class FakeRepository: Repository {
         savedMessages.add(message)
     }
 
+    override suspend fun deleteMsg(id: Int) {}
+
     override suspend fun getConvById(convId: String): Conversation? = null
 
     override fun getConversations(): Flow<List<Conversation>> = emptyFlow()

@@ -4,7 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import com.event.chats.ui.MainScreen
+import com.event.chat.MainScreen
 import com.event.chats.ui.theme.AichatTheme
 import dagger.hilt.android.AndroidEntryPoint
 

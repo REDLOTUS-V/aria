@@ -2,7 +2,6 @@ package com.event.chats
 
 import app.cash.turbine.test
 import com.event.chats.ui.ChatViewmodel
-import com.event.chats.ui.SendState
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
